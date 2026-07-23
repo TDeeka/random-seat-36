@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#6c5ce7">
+<title>ระบบสุ่มที่นั่งนักเรียน 36 ที่นั่ง</title>
+<style>
+:root{
+  --purple:#6c5ce7;
+  --purple-dark:#4f46c8;
+  --blue:#38bdf8;
+  --yellow:#fde68a;
+  --ink:#1f2a44;
+  --muted:#6b7280;
+  --line:#cdd8f5;
+  --bg1:#eef2ff;
+  --bg2:#ecfeff;
+  --shadow:0 14px 34px rgba(76,81,191,.16);
+  --seat-min:58px;
+  --seat-max:92px;
+  --seat-gap:8px;
+  --group-gap:48px;
+}
+*{box-sizing:border-box}
+html,body{
+  margin:0;
+  min-height:100%;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,sans-serif;
+  color:var(--ink);
+  background:
+    radial-gradient(circle at 10% 5%,rgba(244,114,182,.18),transparent 25%),
+    radial-gradient(circle at 90% 10%,rgba(56,189,248,.18),transparent 24%),
+    linear-gradient(145deg,var(--bg1),var(--bg2));
+}
+body{
+  padding:env(safe-area-inset-top) env(safe-area-inset-right)
+          env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.app{max-width:1180px;margin:auto;padding:20px}
+.top{
+  display:flex;gap:16px;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;margin-bottom:16px;
+}
+.title h1{margin:0;font-size:clamp(1.45rem,4vw,2.3rem);color:var(--purple-dark)}
+.title p{margin:.35rem 0 0;color:var(--muted)}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+button{
+  border:0;border-radius:18px;padding:12px 18px;font-size:1rem;
+  font-weight:800;cursor:pointer;
+  box-shadow:0 7px 16px rgba(79,70,200,.15);
+  background:#fff;color:var(--purple-dark);
+}
+button:active{transform:scale(.97)}
+button.primary{background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff}
+button:disabled{opacity:.55}
+.rules{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.chip{
+  background:rgba(255,255,255,.86);
+  border:1px solid #d9def5;
+  padding:9px 12px;border-radius:999px;
+  font-weight:750;font-size:.9rem;color:#48506a;
+}
+.room{
+  background:rgba(255,255,255,.88);
+  border:1px solid rgba(205,216,245,.95);
+  border-radius:28px;padding:26px 24px 30px;
+  box-shadow:var(--shadow);backdrop-filter:blur(10px);
+  overflow-x:auto;
+}
+.front{display:flex;justify-content:center;margin-bottom:28px}
+.board{
+  width:min(76%,620px);
+  text-align:center;padding:11px 20px;
+  border-radius:14px;
+  background:linear-gradient(135deg,var(--purple-dark),var(--purple));
+  color:#fff;font-weight:850;letter-spacing:.02em;
+}
+
+/* ทุกแถวจัดกึ่งกลางให้สมมาตรกับกระดาน */
+.seating-area{
+  position:relative;
+  width:100%;
+  min-width:760px;
+  margin:0 auto;
+}
+.rows{display:flex;flex-direction:column;gap:34px}
+.row-block{
+  width:100%;
+  position:relative;
+  padding:2px 0;
+}
+.seat-row{
+  width:100%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:var(--group-gap);
+}
+.seat-group{display:grid;gap:var(--seat-gap)}
+.group-3{grid-template-columns:repeat(3,minmax(var(--seat-min),var(--seat-max)))}
+.group-2{grid-template-columns:repeat(2,minmax(var(--seat-min),var(--seat-max)))}
+.seat{
+  aspect-ratio:1.18/1;border-radius:16px;
+  background:linear-gradient(180deg,#fff,#f4f7ff);
+  border:2px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(.82rem,2.1vw,1.18rem);
+  font-weight:850;
+  box-shadow:0 7px 16px rgba(76,81,191,.11);
+  position:relative;overflow:hidden;
+}
+.seat.special{
+  background:linear-gradient(180deg,#fff9d8,var(--yellow));
+  border-color:#e6b94f;color:#6b4a00;
+}
+.seat.spin{animation:flip .48s ease both}
+@keyframes flip{
+  0%{transform:scale(.84) rotateX(90deg);opacity:.25}
+  100%{transform:scale(1) rotateX(0);opacity:1}
+}
+.meta{text-align:center;margin:14px 0 0;color:#6f7892;font-size:.9rem}
+
+
+@media screen{
+  .row-block::before{
+    content:"";
+    position:absolute;
+    left:8%;
+    right:8%;
+    top:50%;
+    height:1px;
+    background:linear-gradient(90deg,transparent,rgba(108,92,231,.08),transparent);
+    transform:translateY(-50%);
+    z-index:0;
+  }
+  .seat-row{position:relative;z-index:1}
+  .seat{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+  .seat:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(76,81,191,.15)}
+}
+
+@media(max-width:780px){
+  :root{
+    --seat-min:32px;
+    --seat-max:1fr;
+    --seat-gap:5px;
+    --group-gap:18px;
+  }
+  .app{padding:12px}
+  .actions{width:100%}
+  .actions button{flex:1;min-width:110px}
+  .room{padding:12px}
+  .rows{gap:22px}
+  .seating-area{min-width:0}
+  .group-3{grid-template-columns:repeat(3,minmax(32px,1fr))}
+  .group-2{grid-template-columns:repeat(2,minmax(32px,1fr))}
+  .seat{
+    border-radius:10px;border-width:1.5px;
+    font-size:clamp(.72rem,2.8vw,.95rem);
+  }
+  .seat.special:after{display:none}
+  .chip{font-size:.8rem;padding:7px 10px}
+}
+@media(max-width:450px){
+  :root{--seat-gap:4px;--group-gap:12px}
+  .actions button{padding:11px 9px;font-size:.9rem}
+}
+@media print{
+  body{background:#fff}
+  .app{max-width:none;padding:0}
+  .actions,.rules{display:none!important}
+  .room{box-shadow:none;border:0;padding:8mm;overflow:visible}
+  .title{text-align:center}
+  .seating-area{min-width:0}
+  .rows{gap:10mm}
+  .seat-row{gap:12mm}
+  .seat-group{gap:3mm}
+  .seat{box-shadow:none;border:1.2pt solid #777;font-size:13pt}
+  .seat.special{background:#eee!important;color:#000}
+  .board{background:#eee!important;color:#000;border:1.2pt solid #555}
+  @page{size:A4 landscape;margin:10mm}
+}
+</style>
+</head>
+<body>
+<main class="app">
+<header class="top">
+  <div class="title">
+    <h1>🎲 ระบบสุ่มที่นั่งนักเรียน</h1>
+    <p>จำนวน 36 ที่นั่ง • ใช้เฉพาะเลขที่ 1–36</p>
+  </div>
+  <div class="actions">
+    <button class="primary" id="randomBtn">🎲 สุ่มที่นั่ง</button>
+    <button id="fullBtn">📺 เต็มจอ</button>
+    <button id="printBtn">🖨️ พิมพ์ A4</button>
+  </div>
+</header>
+
+<section class="room">
+  <div class="front"><div class="board">หน้าห้อง / กระดาน</div></div>
+  <div class="seating-area">
+    <div class="rows" id="rows"></div>
+  </div>
+  <p class="meta" id="meta">กด “สุ่มที่นั่ง” เพื่อเริ่มต้น</p>
+</section>
+</main>
+
+<script>
+const rowGroups=[
+  [3,3,2],
+  [3,3,2],
+  [3,3,2],
+  [3,3,2],
+  [2,2]
+];
+
+const highlighted=[19,21,24,36];
+const leftOnly=[19,21,24];
+
+const rowsEl=document.getElementById('rows');
+const meta=document.getElementById('meta');
+const randomBtn=document.getElementById('randomBtn');
+
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function buildSeatMap(){
+  const seats=[];
+  let index=0;
+
+  rowGroups.forEach((groups,row)=>{
+    groups.forEach((groupSize,group)=>{
+      for(let pos=0;pos<groupSize;pos++){
+        seats.push({
+          index:index++,
+          row,
+          group,
+          pos,
+          groupSize,
+          hasRightNeighbor:pos<groupSize-1
+        });
+      }
+    });
+  });
+
+  return seats;
+}
+
+const seats=buildSeatMap();
+
+function isImmediatelyLeftOfSpecial(values,index){
+  const seat=seats[index];
+  if(!seat || seat.pos>=seat.groupSize-1) return false;
+
+  const rightSeat=seats.find(s=>
+    s.row===seat.row &&
+    s.group===seat.group &&
+    s.pos===seat.pos+1
+  );
+
+  return rightSeat && leftOnly.includes(values[rightSeat.index]);
+}
+
+function makeLayout(){
+  let result;
+
+  do{
+    result=Array(36).fill(null);
+
+    // เลขที่ 36 อยู่ได้เฉพาะแถวที่ 1
+    const firstRowPositions=seats
+      .filter(s=>s.row===0)
+      .map(s=>s.index);
+
+    const pos36=firstRowPositions[
+      Math.floor(Math.random()*firstRowPositions.length)
+    ];
+    result[pos36]=36;
+
+    // เลขที่ 19, 21, 24 ต้องมีเพื่อนด้านขวา
+    // และไม่เลือกตำแหน่งที่อยู่ขวาติดกับเลขที่ 36
+    const eligibleLeftPositions=seats
+      .filter(s=>{
+        if(!s.hasRightNeighbor || s.index===pos36) return false;
+
+        const leftNeighbor=seats.find(x=>
+          x.row===s.row &&
+          x.group===s.group &&
+          x.pos===s.pos-1
+        );
+
+        return !leftNeighbor || leftNeighbor.index!==pos36;
+      })
+      .map(s=>s.index);
+
+    shuffle(eligibleLeftPositions);
+    const specialNumbers=shuffle(leftOnly.slice());
+
+    specialNumbers.forEach((n,i)=>{
+      result[eligibleLeftPositions[i]]=n;
+    });
+
+    const remaining=Array.from({length:36},(_,i)=>i+1)
+      .filter(n=>![19,21,24,36].includes(n));
+
+    shuffle(remaining);
+
+    let r=0;
+    for(let i=0;i<36;i++){
+      if(result[i]===null) result[i]=remaining[r++];
+    }
+
+  }while(isImmediatelyLeftOfSpecial(result,result.indexOf(36)));
+
+  return result;
+}
+
+function valid(values){
+  if(!Array.isArray(values)||values.length!==36) return false;
+  if(new Set(values).size!==36) return false;
+
+  const i36=values.indexOf(36);
+  if(!seats[i36]||seats[i36].row!==0) return false;
+  if(isImmediatelyLeftOfSpecial(values,i36)) return false;
+
+  return leftOnly.every(n=>{
+    const i=values.indexOf(n);
+    return seats[i]&&seats[i].hasRightNeighbor;
+  });
+}
+
+function render(values,animate=false){
+  rowsEl.innerHTML='';
+  let offset=0;
+
+  rowGroups.forEach((groups,rowIndex)=>{
+    const block=document.createElement('div');
+    block.className='row-block';
+
+    const row=document.createElement('div');
+    row.className='seat-row';
+
+    groups.forEach(groupSize=>{
+      const group=document.createElement('div');
+      group.className='seat-group '+(groupSize===3?'group-3':'group-2');
+
+      for(let pos=0;pos<groupSize;pos++){
+        const n=values[offset++];
+        const seat=document.createElement('div');
+
+        seat.className=
+          'seat'+
+          (highlighted.includes(n)?' special':'')+
+          (animate?' spin':'');
+
+        seat.textContent=n;
+        seat.style.animationDelay=(pos*30)+'ms';
+        group.appendChild(seat);
+      }
+
+      row.appendChild(group);
+    });
+
+    block.append(row);
+    rowsEl.appendChild(block);
+  });
+
+  localStorage.setItem('randomSeat36v7',JSON.stringify(values));
+}
+
+function randomize(){
+  randomBtn.disabled=true;
+  let ticks=0;
+
+  const timer=setInterval(()=>{
+    render(makeLayout());
+    ticks++;
+
+    if(ticks>=7){
+      clearInterval(timer);
+      render(makeLayout(),true);
+
+      const now=new Date();
+      meta.textContent='สุ่มล่าสุด: '+now.toLocaleString('th-TH',{
+        dateStyle:'medium',
+        timeStyle:'short'
+      });
+
+      localStorage.setItem('randomSeat36TimeV7',meta.textContent);
+      randomBtn.disabled=false;
+    }
+  },90);
+}
+
+randomBtn.addEventListener('click',randomize);
+document.getElementById('printBtn').addEventListener('click',()=>window.print());
+
+document.getElementById('fullBtn').addEventListener('click',async()=>{
+  try{
+    if(!document.fullscreenElement){
+      await document.documentElement.requestFullscreen();
+    }else{
+      await document.exitFullscreen();
+    }
+  }catch(e){
+    alert('บน iPad ให้เพิ่มเว็บไซต์ไปยังหน้าจอโฮมเพื่อใช้งานแบบเต็มจอ');
+  }
+});
+
+try{
+  const saved=JSON.parse(localStorage.getItem('randomSeat36v7'));
+
+  if(valid(saved)){
+    render(saved);
+    meta.textContent=
+      localStorage.getItem('randomSeat36TimeV7') ||
+      'โหลดผลการสุ่มล่าสุดแล้ว';
+  }else{
+    render(makeLayout());
+  }
+}catch(e){
+  render(makeLayout());
+}
+</script>
+</body>
+</html>
